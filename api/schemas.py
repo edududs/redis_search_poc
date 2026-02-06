@@ -1,8 +1,9 @@
 """Esquemas Pydantic alinhados com UserOM e ProductOM do redis_testing."""
 
+import re
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 # Tipos reutilizáveis e restrições
 StrRequired = Annotated[str, Field(min_length=1, strip_whitespace=True)]
@@ -37,6 +38,15 @@ class UserResponse(UserBase):
 
     id: StrRequired
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("cpf", mode="before")
+    @classmethod
+    def normalize_cpf(cls, v: str) -> str:
+        """Reduz CPF a 11 dígitos antes da validação."""
+        if not isinstance(v, str):
+            return v
+        digits = re.sub(r"\D", "", v)
+        return digits[:11].zfill(11)
 
 
 class ProductBase(BaseModel):

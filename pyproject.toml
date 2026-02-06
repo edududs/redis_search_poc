@@ -19,6 +19,7 @@ dependencies = [
     "redis-om>=1.0.6",
     "rich>=14.3.2",
     "ruff>=0.15.0",
+    "typer>=0.21.1",
 ]
 
 [project.scripts]

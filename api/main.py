@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from api.deps import AppContainer
-from api.routes import products, users
+from api.routes import internal, products, users
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
@@ -27,6 +27,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(internal.router)
 app.include_router(users.router)
 app.include_router(products.router)
 

@@ -1,3 +1,3 @@
-from api.routes import products, users
+from api.routes import internal, products, users
 
-__all__ = ["products", "users"]
+__all__ = ["internal", "products", "users"]

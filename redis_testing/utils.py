@@ -22,10 +22,19 @@ def get_redis_client(
     return client
 
 
+DEFAULT_HTTP_TIMEOUT = 30.0
+
+
 class ApiClient:
-    def __init__(self, base_url: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str | None = None,
+        timeout: float = DEFAULT_HTTP_TIMEOUT,
+    ) -> None:
         self.base_url = base_url
         self.api_key = api_key
+        self.timeout = timeout
 
     def _request(
         self,
@@ -38,8 +47,7 @@ class ApiClient:
         headers = headers or {}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        # Use httpx.Client for keep-alive/session reuse
-        with httpx.Client(base_url=self.base_url) as client:
+        with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
             return client.request(
                 method, path, params=params, json=data, headers=headers
             )
