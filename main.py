@@ -15,6 +15,7 @@ from rich.panel import Panel
 
 from display import SampleDisplayer
 from redis_testing.om import Product, User
+from redis_testing.om.example import run_examples
 from redis_testing.utils import ApiClient
 
 # -----------------------------------------------------------------------------
@@ -202,7 +203,9 @@ class FallbackTester:
                 border_style="magenta",
             )
         )
-        self._console.print(f"  [dim]IDs desta execução: user={self._user_id!r} product={self._product_id!r}[/dim]")
+        self._console.print(
+            f"  [dim]IDs desta execução: user={self._user_id!r} product={self._product_id!r}[/dim]"
+        )
 
         client = ApiClient(
             base_url=self._base_url,
@@ -328,8 +331,23 @@ def run_main(
         cleaner.delete_db()
 
 
+@app.command()
+def examples(
+    clear: bool = typer.Option(
+        False,
+        "--clear",
+        help="Limpa todos os dados criados pelos exemplos ao final (torna idempotente).",
+    ),
+) -> None:
+    """Executa exemplos completos de HashModel, JsonModel e RedisCache."""
+    run_examples(clear)
+
+
 def run() -> None:
     """Entry point para o comando run-main (pyproject.toml)."""
+    import sys
+    if len(sys.argv) == 1:
+        sys.argv.append("run-main")
     app()
 
 

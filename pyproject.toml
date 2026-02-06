@@ -20,6 +20,7 @@ dependencies = [
     "rich>=14.3.2",
     "ruff>=0.15.0",
     "typer>=0.21.1",
+    "devtools>=0.12.2",
 ]
 
 [project.scripts]
@@ -28,3 +29,6 @@ run-main = "main:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["api", "redis_testing"]
+
+[tool.ruff.lint]
+select = ["ALL"]

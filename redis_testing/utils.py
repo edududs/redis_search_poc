@@ -8,7 +8,7 @@ from redis.exceptions import RedisError
 def get_redis_client(
     url: str | None = None,
     host: str = "localhost",
-    port: int = 6379,
+    port: int = 666,
     db: int = 0,
     decode_responses: bool = True,
 ) -> Redis:
@@ -48,9 +48,7 @@ class ApiClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
-            return client.request(
-                method, path, params=params, json=data, headers=headers
-            )
+            return client.request(method, path, params=params, json=data, headers=headers)
 
     def get(
         self, url: str, params: dict | None = None, headers: dict | None = None
