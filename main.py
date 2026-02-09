@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 import time
+from enum import Enum
 from pathlib import Path
 from string import digits
 from typing import Any
@@ -31,13 +32,34 @@ POPULATE_USERS = 300
 POPULATE_PRODUCTS = 300
 
 
+class Codes(Enum):
+    OK = 200
+
+
 def _env(key: str, default: str = "") -> str:
-    """Obtém o valor da variável de ambiente."""
+    """Obtém o valor da variável de ambiente.
+
+    Args:
+        key: Chave da variável de ambiente.
+        default: Valor padrão.
+
+    Returns:
+        Valor da variável de ambiente.
+
+    """
     return os.getenv(key, default)
 
 
 def _shutdown_api(console: Console) -> bool:
-    """Chama POST /internal/shutdown na API. Retorna True se a chamada foi feita com sucesso."""
+    """Chama POST /internal/shutdown na API. Retorna True se a chamada foi feita com sucesso.
+
+    Args:
+        console: Console para exibição.
+
+    Returns:
+        True se a chamada foi feita com sucesso, False caso contrário.
+
+    """
     base_url = _env("API_BASE_URL")
     api_key = _env("API_KEY")
     if not base_url or not api_key:
@@ -45,7 +67,7 @@ def _shutdown_api(console: Console) -> bool:
     client = ApiClient(base_url=base_url, api_key=api_key)
     try:
         r = client.post("/internal/shutdown", data={})
-        if r.status_code == 200:
+        if r.status_code == Codes.OK.value:
             console.print("  [dim]API sinalizada para encerrar (POST /internal/shutdown).[/dim]")
             time.sleep(1.5)
             return True
@@ -63,6 +85,13 @@ class StorageCleaner:
     """Limpeza de Redis (índices User/Product) e do arquivo SQLite."""
 
     def __init__(self, db_path: Path, console: Console) -> None:
+        """Inicializa o StorageCleaner.
+
+        Args:
+            db_path: Caminho do arquivo do banco SQLite.
+            console: Console para exibição.
+
+        """
         self._db_path = db_path
         self._console = console
 
@@ -102,6 +131,16 @@ class RedisPopulator:
         user_count: int = POPULATE_USERS,
         product_count: int = POPULATE_PRODUCTS,
     ) -> None:
+        """Inicializa o RedisPopulator.
+
+        Args:
+            user_service: Serviço de usuários.
+            product_service: Serviço de produtos.
+            displayer: Displayer para exibição.
+            user_count: Número de usuários a serem populados.
+            product_count: Número de produtos a serem populados.
+
+        """
         self._user_service = user_service
         self._product_service = product_service
         self._displayer = displayer
@@ -125,7 +164,9 @@ class RedisPopulator:
         created = self._product_service.populate(self._product_count, id_prefix="prod", seed=42)
         self._displayer.show_product_populate(created, self._product_service.count())
         product_page = self._product_service.list_products(
-            offset=0, limit=10, sort_by_price_asc=True
+            offset=0,
+            limit=10,
+            sort_by_price_asc=True,
         )
         self._displayer.show_product_table(product_page)
         if product_page:
@@ -141,17 +182,38 @@ class RedisPopulator:
 
 
 def _random_fallback_suffix() -> str:
-    """Sufixo aleatório para IDs do teste de fallback (idempotência entre execuções)."""
+    """Sufixo aleatório para IDs do teste de fallback (idempotência entre execuções).
+
+    Returns:
+        Sufixo aleatório.
+
+    """
     return secrets.token_hex(4)
 
 
 def _random_cpf_11() -> str:
-    """CPF aleatório de 11 dígitos (evita conflito de unicidade na API)."""
+    """CPF aleatório de 11 dígitos (evita conflito de unicidade na API).
+
+    Returns:
+        CPF aleatório de 11 dígitos.
+
+    """
     return "".join(secrets.choice(digits) for _ in range(11))
 
 
 class FallbackTester:
-    """Testa fluxo cache miss → API (SQLite) → grava no Redis. Usa IDs/dados aleatórios por run (idempotente)."""
+    """Testa fluxo cache miss → API (SQLite) → grava no Redis.
+
+    Usa IDs/dados aleatórios por run (idempotente).
+
+    Args:
+        base_url: URL da API.
+        api_key: Chave da API.
+        user_service: Serviço de usuários.
+        product_service: Serviço de produtos.
+        console: Console para exibição.
+
+    """
 
     def __init__(
         self,
@@ -161,6 +223,16 @@ class FallbackTester:
         product_service: Product,
         console: Console,
     ) -> None:
+        """Inicializa o FallbackTester.
+
+        Args:
+            base_url: URL da API.
+            api_key: Chave da API.
+            user_service: Serviço de usuários.
+            product_service: Serviço de produtos.
+            console: Console para exibição.
+
+        """
         self._base_url = base_url
         self._api_key = api_key
         self._user_service = user_service
@@ -176,7 +248,17 @@ class FallbackTester:
         product_service: Product,
         console: Console,
     ) -> "FallbackTester | None":
-        """Constrói a partir de env; retorna None se API_BASE_URL ou API_KEY ausentes."""
+        """Constrói a partir de env; retorna None se API_BASE_URL ou API_KEY ausentes.
+
+        Args:
+            user_service: Serviço de usuários.
+            product_service: Serviço de produtos.
+            console: Console para exibição.
+
+        Returns:
+            FallbackTester se API_BASE_URL e API_KEY estão definidos, None caso contrário.
+
+        """
         base_url = _env("API_BASE_URL")
         api_key = _env("API_KEY")
         if not base_url or not api_key:
@@ -201,10 +283,10 @@ class FallbackTester:
                 "Teste fallback: cache miss → API (SQLite) → grava no Redis",
                 title="Fallback API",
                 border_style="magenta",
-            )
+            ),
         )
         self._console.print(
-            f"  [dim]IDs desta execução: user={self._user_id!r} product={self._product_id!r}[/dim]"
+            f"  [dim]IDs desta execução: user={self._user_id!r} product={self._product_id!r}[/dim]",
         )
 
         client = ApiClient(
@@ -246,12 +328,17 @@ class FallbackTester:
             self._console.print(f"  [red]POST /products: {r.status_code}[/red]")
 
     def _assert_fallback_get(self) -> tuple[Any, Any]:
-        """Retorna (user_om | None, product_om | None)."""
+        """Assert fallback get.
+
+        Returns:
+            Tuple[Any, Any]: Tuple com o usuário e o produto.
+
+        """
         u = self._user_service.get(self._user_id, fallback_to_api=True)
         if u:
             self._console.print(
                 f"  [green]User fallback (API → Redis):[/green] "
-                f"id={u.id} name={u.name} email={u.email}"
+                f"id={u.id} name={u.name} email={u.email}",
             )
         else:
             self._console.print("  [red]User fallback: não encontrado (API está rodando?)[/red]")
@@ -259,7 +346,7 @@ class FallbackTester:
         if p:
             self._console.print(
                 f"  [green]Product fallback (API → Redis):[/green] "
-                f"id={p.id} name={p.name} price={p.price}"
+                f"id={p.id} name={p.name} price={p.price}",
             )
         else:
             self._console.print("  [red]Product fallback: não encontrado (API está rodando?)[/red]")
@@ -284,9 +371,10 @@ _console = Console()
 
 @app.command()
 def run_main(
+    *,
     clean: bool = typer.Option(
-        False,
         "--clean",
+        default=False,
         help="Limpa Redis no início e remove banco SQLite ao final (após testes).",
     ),
 ) -> None:
@@ -302,7 +390,7 @@ def run_main(
             Panel.fit(
                 "Limpando apenas Redis (--clean); banco removido ao final.",
                 border_style="yellow",
-            )
+            ),
         )
         cleaner.clear_redis(user_service, product_service)
         _console.print()
@@ -314,7 +402,7 @@ def run_main(
         _console.print()
         _console.print(
             "[dim]Teste de fallback omitido: defina API_BASE_URL e API_KEY no .env "
-            "e deixe a API rodando (ex.: uv run run-api).[/dim]"
+            "e deixe a API rodando (ex.: uv run run-api).[/dim]",
         )
     else:
         tester.run()
@@ -325,7 +413,7 @@ def run_main(
             Panel.fit(
                 "Outras ações (--clean): shutdown da API e remoção do banco",
                 border_style="yellow",
-            )
+            ),
         )
         _shutdown_api(_console)
         cleaner.delete_db()
@@ -333,9 +421,10 @@ def run_main(
 
 @app.command()
 def examples(
+    *,
     clear: bool = typer.Option(
-        False,
         "--clear",
+        default=False,
         help="Limpa todos os dados criados pelos exemplos ao final (torna idempotente).",
     ),
 ) -> None:
@@ -346,6 +435,7 @@ def examples(
 def run() -> None:
     """Entry point para o comando run-main (pyproject.toml)."""
     import sys
+
     if len(sys.argv) == 1:
         sys.argv.append("run-main")
     app()

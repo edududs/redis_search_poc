@@ -32,3 +32,4 @@ packages = ["api", "redis_testing"]
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = ["CPY", "BLE001", "D103", "D104", "D101", "D100", "ANN401", "TRY300", "PLC0415", "PLR0917", "PLR0913", "D106", "DOC"]

@@ -1,6 +1,7 @@
 import json
+from collections.abc import Callable
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
@@ -12,6 +13,8 @@ from redis_testing.om import Product, ProductOM, User, UserOM
 
 _logger = getLogger(__name__)
 _stderr_console = Console(stderr=True)
+
+MAX_DICT_LENGTH = 2
 
 
 def print_redis_error(operation: str, prefix: str, error: Exception) -> None:
@@ -31,30 +34,48 @@ def print_redis_error(operation: str, prefix: str, error: Exception) -> None:
                 title=f"[red]Erro Redis: {operation} ({prefix})[/red]",
                 border_style="red",
                 expand=False,
-            )
+            ),
         )
     except Exception:
-        _logger.warning(f"Redis op '{operation}' falhou ({prefix}): {msg}")
+        _logger.warning("Redis op '%s' falhou (%s): %s", operation, prefix, msg)
 
 
 def format_value_for_display(value: Any) -> str:
-    """Formata valor para exibição: dicts com mais de 2 chaves são indentados como JSON."""
+    """Formata valor para exibição: dicts com mais de 2 chaves são indentados como JSON.
+
+    Args:
+        value: Valor a ser formatado.
+
+    Returns:
+        Valor formatado.
+
+    """
     if isinstance(value, dict):
-        if len(value) > 2:
+        if len(value) > MAX_DICT_LENGTH:
             return json.dumps(value, indent=2, ensure_ascii=False)
         return str(value)
     return str(value)
 
 
 def format_price(value: Any) -> str:
-    """Formata valores numéricos como moeda brasileira."""
+    """Formata valores numéricos como moeda brasileira.
+
+    Args:
+        value: Valor a ser formatado.
+
+    Returns:
+        Valor formatado.
+
+    """
     if isinstance(value, (int, float)):
         return f"R$ {value:.2f}"
     return str(value)
 
 
 def print_model_in_panel(
-    console: Console, model: BaseModel, border_style: str = "blue"
+    console: Console,
+    model: BaseModel,
+    border_style: str = "blue",
 ) -> None:
     """Usa Rich.Pretty para formatar com syntax highlighting e exibir no Painel."""
     # Pretty do Rich aplica syntax highlighting automaticamente em modelos Pydantic
@@ -70,7 +91,7 @@ def print_model_in_panel(
             title=f"[{border_style}]{title}[/{border_style}]",
             border_style=border_style,
             expand=False,
-        )
+        ),
     )
 
 
@@ -78,27 +99,57 @@ class SampleDisplayer[T: BaseModel]:
     """Renderização de painéis e tabelas para usuários e produtos."""
 
     def __init__(self, console: Console) -> None:
+        """Inicializa o SampleDisplayer.
+
+        Args:
+            console: Console para exibição.
+
+        """
         self._console = console
 
     def panel(self, title: str, content: str, border_style: str = "blue") -> None:
+        """Exibe um painel com o título e o conteúdo.
+
+        Args:
+            title: Título do painel.
+            content: Conteúdo do painel.
+            border_style: Estilo da borda do painel.
+
+        """
         self._console.print(Panel.fit(content, title=title, border_style=border_style))
 
     def show_user_populate(self, created: int, total: int) -> None:
+        """Exibe o resultado da população de usuários falsos.
+
+        Args:
+            created: Número de usuários criados.
+            total: Número total de usuários no índice.
+
+        """
         self._console.print(
             Panel.fit(
                 "Populando usuários falsos",
                 title="Redis OM — UserOM.objects",
                 border_style="blue",
-            )
+            ),
         )
         self._console.print(f"  [green]Criados:[/green] {created} usuários")
         self._console.print(
             f"  [yellow]Total no índice (global):[/yellow] {total} "
-            "[dim](acumula execuções anteriores)[/dim]"
+            "[dim](acumula execuções anteriores)[/dim]",
         )
 
-    def _get_model_fields(self, model_type: type[BaseModel]) -> dict[str, Any]:
-        """Extrai os campos do modelo Pydantic, filtrando campos internos."""
+    @staticmethod
+    def _get_model_fields(model_type: type[BaseModel]) -> dict[str, Any]:
+        """Extrai os campos do modelo Pydantic, filtrando campos internos.
+
+        Args:
+            model_type: Tipo do modelo Pydantic.
+
+        Returns:
+            Campos do modelo Pydantic.
+
+        """
         if hasattr(model_type, "model_fields"):
             return {
                 name: field_info
@@ -159,12 +210,19 @@ class SampleDisplayer[T: BaseModel]:
         first_user: "UserOM",
         user_service: "User",
     ) -> None:
+        """Exibe o resultado do teste de unicidade de usuários.
+
+        Args:
+            first_user: Primeiro usuário.
+            user_service: Serviço de usuários.
+
+        """
         self._console.print()
         self._console.print(
             Panel.fit(
                 "Teste unicidade usuário: get_by_email e get_by_cpf",
                 border_style="blue",
-            )
+            ),
         )
         by_email = user_service.get_by_email(first_user.email)
         by_cpf = user_service.get_by_cpf(first_user.cpf)
@@ -173,7 +231,7 @@ class SampleDisplayer[T: BaseModel]:
             print_model_in_panel(self._console, by_email[0], border_style="blue")
         else:
             self._console.print(
-                f"  get_by_email({first_user.email!r}): {len(by_email)} resultado(s)"
+                f"  get_by_email({first_user.email!r}): {len(by_email)} resultado(s)",
             )
 
         if by_cpf:
@@ -182,18 +240,25 @@ class SampleDisplayer[T: BaseModel]:
             self._console.print(f"  get_by_cpf({first_user.cpf!r}): 0 resultado(s)")
 
     def show_product_populate(self, created: int, total: int) -> None:
+        """Exibe o resultado da população de produtos falsos.
+
+        Args:
+            created: Número de produtos criados.
+            total: Número total de produtos no índice.
+
+        """
         self._console.print()
         self._console.print(
             Panel.fit(
                 "Populando produtos falsos",
                 title="Redis OM — ProductOM.objects",
                 border_style="green",
-            )
+            ),
         )
         self._console.print(f"  [green]Criados:[/green] {created} produtos")
         self._console.print(
             f"  [yellow]Total no índice (global):[/yellow] {total} "
-            "[dim](acumula execuções anteriores)[/dim]"
+            "[dim](acumula execuções anteriores)[/dim]",
         )
 
     def show_product_table(self, product_page: list["ProductOM"]) -> None:
@@ -211,6 +276,13 @@ class SampleDisplayer[T: BaseModel]:
         category: str,
         product_service: "Product",
     ) -> None:
+        """Exibe o resultado do teste de busca por categoria.
+
+        Args:
+            category: Categoria do produto.
+            product_service: Serviço de produtos.
+
+        """
         self._console.print()
         self._console.print(Panel.fit(f"Teste get_by_category: {category!r}", border_style="green"))
         by_category = product_service.get_by_category(category)
@@ -225,24 +297,37 @@ class ExampleDisplayer:
     """Renderização centralizada para todos os exemplos do example.py."""
 
     def __init__(self, console: Console) -> None:
+        """Inicializa o ExampleDisplayer.
+
+        Args:
+            console: Console para exibição.
+
+        """
         self.console = console
 
     def example_title_panel(self, title: str, subtitle: str, border_style: str = "blue") -> None:
         """Exibe painel de título de exemplo."""
         self.console.print(
-            Panel.fit(subtitle, title=title, border_style=border_style)
+            Panel.fit(subtitle, title=title, border_style=border_style),
         )
 
     def section_title(self, title: str) -> None:
         """Exibe título de seção."""
         self.console.print(f"\n[yellow]{title}[/yellow]")
 
-    def creation_result(self, obj_id: str, obj_name: str, created: bool, price: float | None = None) -> None:
+    def creation_result(
+        self,
+        obj_id: str,
+        obj_name: str,
+        *,
+        created: bool,
+        price: float | None = None,
+    ) -> None:
         """Exibe resultado de criação de objeto."""
         status = "Criado" if created else "Já existe"
         if price is not None:
             self.console.print(
-                f"  [green]✓[/green] {status}: {obj_id} - {obj_name} (R$ {price:.2f})"
+                f"  [green]✓[/green] {status}: {obj_id} - {obj_name} (R$ {price:.2f})",
             )
         else:
             self.console.print(f"  [green]✓[/green] {status}: {obj_id} - {obj_name}")
@@ -252,9 +337,12 @@ class ExampleDisplayer:
         if result:
             if hasattr(result, "name") and hasattr(result, "email"):
                 self.console.print(f"  [cyan]get({key!r}):[/cyan] {result.name} ({result.email})")
-            elif hasattr(result, "name") and hasattr(result, "category") and hasattr(result, "price"):
+            elif (
+                hasattr(result, "name") and hasattr(result, "category") and hasattr(result, "price")
+            ):
                 self.console.print(
-                    f"  [cyan]get({key!r}):[/cyan] {result.name} - {result.category} - R$ {result.price:.2f}"
+                    f"  [cyan]get({key!r}):[/cyan] {result.name} - {result.category} \
+                        - R$ {result.price:.2f}",
                 )
             else:
                 self.console.print(f"  [cyan]get({key!r}):[/cyan] {result}")
@@ -262,7 +350,11 @@ class ExampleDisplayer:
             self.console.print("  [red]Objeto não encontrado[/red]")
 
     def find_result(
-        self, operation: str, query: str, results: list[BaseModel] | BaseModel | None, border_style: str = "blue"
+        self,
+        operation: str,
+        query: str,
+        results: list[BaseModel] | BaseModel | None,
+        border_style: str = "blue",
     ) -> None:
         """Exibe resultado de busca (find_by_*, search_by_*)."""
         if results is None:
@@ -309,7 +401,14 @@ class ExampleDisplayer:
 
         self.console.print(table)
 
-    def operation_result(self, operation: str, obj_id: str, details: str, success: bool | None = None) -> None:
+    def operation_result(
+        self,
+        operation: str,
+        obj_id: str,
+        details: str,
+        *,
+        success: bool | None = None,
+    ) -> None:
         """Exibe resultado de operação (get_or_create, update_or_create, delete)."""
         if success is None:
             self.console.print(f"  [cyan]{operation}:[/cyan] {obj_id} {details}")
@@ -323,7 +422,7 @@ class ExampleDisplayer:
         formatted = format_value_for_display(value)
         self.console.print(f"  [cyan]get({key!r}):[/cyan] {formatted}")
 
-    def cache_exists(self, key: str, exists: bool) -> None:
+    def cache_exists(self, key: str, *, exists: bool) -> None:
         """Exibe resultado de cache.exists()."""
         self.console.print(f"  [cyan]exists({key!r}):[/cyan] {exists}")
 

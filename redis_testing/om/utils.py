@@ -16,22 +16,34 @@ def bootstrap(client: Redis) -> None:
     SchemaDetector(conn=client).run()
 
 
-class ManagerDescriptor:
-    """Descriptor que vincula o manager à classe do modelo no primeiro acesso a .objects.
+class ManagerDescriptor[T]:
+    """Descriptor que vincula o manager à classe do modelo no primeiro acesso a .objects."""
 
-    Assim não é preciso fazer Model.objects.model = Model no final do arquivo:
-    ao acessar UserOM.objects, criamos o manager, setamos model=UserOM e retornamos.
-    """
+    def __init__(self, manager_class: type[T]) -> None:
+        """Inicializa o ManagerDescriptor.
 
-    def __init__(self, manager_class: type) -> None:
+        Args:
+            manager_class: Classe do manager.
+
+        """
         self.manager_class = manager_class
-        self._cache: dict[type, Any] = {}
+        self._cache: dict[type[T], Any] = {}
 
-    def __get__(self, obj: Any, owner: type | None = None) -> Any:
+    def __get__(self, obj: Any, owner: type[T] | None = None) -> T:
+        """Obtém o manager para a classe.
+
+        Args:
+            obj: Objeto.
+            owner: Classe.
+
+        Returns:
+            T: Manager.
+
+        """
         if owner is None:
             return self
         if owner not in self._cache:
             manager = self.manager_class()
-            manager.model = owner  # type: ignore[attr-defined]
+            manager.model = owner
             self._cache[owner] = manager
         return self._cache[owner]

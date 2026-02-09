@@ -5,18 +5,33 @@ from __future__ import annotations
 import json
 from functools import wraps
 from logging import getLogger
-from typing import Any, Callable, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from redis import Redis
+from redis.commands.search.field import TagField
+from redis.commands.search.index_definition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from redis.exceptions import ResponseError
 
 from display import print_redis_error
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = getLogger(__name__)
 
 
 def handle_redis_error(default: Any = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Decorator para tratamento padronizado de erros Redis."""
+    """Decorador para tratar erros Redis de forma padronizada.
+
+    Args:
+        default: Valor padrão a ser retornado em caso de erro.
+
+    Returns:
+        Decorador para tratar erros Redis de forma padronizada.
+
+    """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
@@ -54,7 +69,16 @@ class RedisCache[T](BaseModel):
         return f"{self.hash_prefix}{key}"
 
     def _prepare_mapping(self, key: str | int, data: T) -> dict[Any, Any]:
-        """Prepara dados para hash, normalizando para strings."""
+        """Prepara dados para hash, normalizando para strings.
+
+        Args:
+            key: Chave para o hash.
+            data: Dados a serem preparados.
+
+        Returns:
+            dict[Any, Any]: Dados preparados para hash.
+
+        """
         if isinstance(data, BaseModel):
             mapping = data.model_dump(mode="json")
         elif isinstance(data, dict):
@@ -68,7 +92,16 @@ class RedisCache[T](BaseModel):
         return {k: str(v) for k, v in mapping.items() if v is not None}
 
     def _parse_output(self, data: Any, model_type: type[T] | None) -> T | Any:
-        """Centraliza a lógica de desserialização e reconstrução (DRY)."""
+        """Centraliza a lógica de desserialização e reconstrução (DRY).
+
+        Args:
+            data: Dados a serem desserializados.
+            model_type: Tipo do modelo Pydantic a ser usado para desserialização.
+
+        Returns:
+            T | Any: Dados desserializados.
+
+        """
         if data is None:
             return None
 
@@ -77,7 +110,8 @@ class RedisCache[T](BaseModel):
             try:
                 if isinstance(data, bytes):
                     data = data.decode()
-                # Tenta decodificar se parecer JSON estruturado (apenas se use_json_storage ou se identificou que é json)
+                # Tenta decodificar se parecer JSON estruturado (apenas se use_json_storage ou se
+                # identificou que é json)
                 # Porém, para manter KISS: se model_type existe, deixe o pydantic tratar.
                 # Se não, e for string JSON, convertemos.
                 if not model_type and data.startswith(("{", "[")):
@@ -100,13 +134,14 @@ class RedisCache[T](BaseModel):
 
     @handle_redis_error(default=None)
     def ensure_index(self) -> None:
-        """Cria índice RediSearch de forma idempotente."""
+        """Cria índice RediSearch de forma idempotente.
+
+        Raises:
+            ResponseError: Se o índice já existir.
+
+        """
         if self._index_ensured or not (self.index_name and self.indexed_fields):
             return
-
-        from redis.commands.search.field import TagField
-        from redis.commands.search.index_definition import IndexDefinition, IndexType
-        from redis.exceptions import ResponseError
 
         r = self._get_client()
         ft = r.ft(self.index_name)
@@ -158,7 +193,16 @@ class RedisCache[T](BaseModel):
 
     @handle_redis_error(default=None)
     def get(self, key: str | int, model_type: type[T] | None = None) -> T | Any:
-        """Busca e desserializa dado do cache."""
+        """Busca e desserializa dado do cache.
+
+        Args:
+            key: Chave para o hash.
+            model_type: Tipo do modelo Pydantic a ser usado para desserialização.
+
+        Returns:
+            T | Any: Dados desserializados.
+
+        """
         r = self._get_client()
         hash_key = self._build_key(key)
 
@@ -189,13 +233,22 @@ class RedisCache[T](BaseModel):
 
     @handle_redis_error(default=None)
     def find_one(self, field: str, value: Any, model_type: type[T] | None = None) -> T | None:
-        """Busca reversa via RediSearch."""
+        """Busca reversa via RediSearch.
+
+        Args:
+            field: Campo para a busca.
+            value: Valor para a busca.
+            model_type: Tipo do modelo Pydantic a ser usado para desserialização.
+
+        Returns:
+            T | None: Dados encontrados.
+
+        """
         if not self.index_name:
             return None
 
         self.ensure_index()
         r = self._get_client()
-        from redis.commands.search.query import Query
 
         # Busca exata com TagField: @campo:{valor}
         q = Query(f"@{field}:{{{value}}}").paging(0, 1)
@@ -221,17 +274,41 @@ class RedisCache[T](BaseModel):
 
     @handle_redis_error(default=False)
     def delete(self, key: str | int) -> bool:
-        """Remove registro."""
+        """Remove registro.
+
+        Args:
+            key: Chave para o hash.
+
+        Returns:
+            bool: True se o registro foi removido, False caso contrário.
+
+        """
         return bool(self._get_client().delete(self._build_key(key)))
 
     @handle_redis_error(default=False)
     def exists(self, key: str | int) -> bool:
-        """Verifica existência."""
+        """Verifica existência.
+
+        Args:
+            key: Chave para o hash.
+
+        Returns:
+            bool: True se o registro existe, False caso contrário.
+
+        """
         return bool(self._get_client().exists(self._build_key(key)))
 
     @handle_redis_error(default=0)
     def bulk_save(self, items: list[tuple[str | int, T]]) -> int:
-        """Guarda múltiplos itens via pipeline."""
+        """Guarda múltiplos itens via pipeline.
+
+        Args:
+            items: Lista de tuplas contendo chave e dados.
+
+        Returns:
+            int: Número de itens salvos.
+
+        """
         if not items:
             return 0
 

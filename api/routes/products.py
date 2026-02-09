@@ -20,11 +20,15 @@ def get_product(
     _: Annotated[str, Depends(get_api_key)],
     repo: Annotated["ProductRepository", Depends(get_product_repository)],
 ) -> ProductResponse:
-    """Retorna produto por id. Usado como fallback quando Product.get(pk, fallback_to_api=True) não encontra no cache."""
+    """Retorna produto por id.
+
+    Usado como fallback quando Product.get(pk, fallback_to_api=True) não encontra no cache.
+    """
     product = repo.get(product_id)
     if product is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Produto não encontrado"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado",
         )
     return product
 

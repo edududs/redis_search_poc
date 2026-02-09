@@ -1,11 +1,12 @@
 """Modelo UserOM (HashModel). CRUD via UserOM.objects."""
 
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from redis import Redis
 from redis_om import Field, HashModel
 
-from ..utils import ManagerDescriptor
+from redis_testing.om.utils import ManagerDescriptor
+
 from .manager import UserOMObjects
 
 
@@ -25,4 +26,4 @@ class UserOM(HashModel, index=True):
     class Meta:
         model_key_prefix = "user-om-testing"
         global_key_prefix = "redis-om-testing"
-        database: Optional[Redis] = None
+        database: Redis | None = None

@@ -1,11 +1,11 @@
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from redis import Redis
 
+from redis_testing.om import bootstrap
 from redis_testing.utils import ApiClient, get_redis_client
 
-from ..utils import bootstrap
 from .model import UserOM
 from .utils import gerar_usuarios_fake
 
@@ -17,11 +17,28 @@ DEFAULT_TTL_SECONDS = 60 * 3
 
 
 class User:
-    """Serviço para operações em usuários: bootstrap, popular com fakes, criar com checagem de único."""
+    """Serviço para operações em usuários.
+
+    Features:
+        Bootstrap
+        Popular com fakes
+        CRUD
+        Get com fallback opcional para API
+    """
 
     def __init__(
-        self, client: Redis | None = None, fallback_to_api: bool = False
+        self,
+        client: Redis | None = None,
+        *,
+        fallback_to_api: bool = False,
     ) -> None:
+        """Serviço para operações em usuários.
+
+        Args:
+            client: Cliente Redis.
+            fallback_to_api: Flag para fallback para API.
+
+        """
         self._client = client or get_redis_client()
         bootstrap(self._client)
         self._model = UserOM
@@ -30,26 +47,36 @@ class User:
 
     @property
     def fallback_to_api(self) -> bool:
+        """Retorna o valor da flag de fallback para API."""
         return self._fallback_to_api
 
     @fallback_to_api.setter
     def fallback_to_api(self, value: bool) -> None:
+        """Define o valor da flag de fallback para API."""
         self._fallback_to_api = value
 
     @property
     def model(self) -> UserOM:
+        """Retorna o modelo do usuário."""
         return self._model
 
     @property
     def objects(self) -> "UserOMObjects":
+        """Retorna o manager dos usuários."""
         return self._objects
 
     @property
     def api_client(self) -> ApiClient:
+        """Retorna o cliente API."""
         return ApiClient.from_env()
 
     def clear(self) -> int:
-        """Remove todos os documentos deste modelo. Retorna quantidade apagada."""
+        """Remove todos os documentos deste modelo.
+
+        Returns:
+            Quantidade de documentos apagados.
+
+        """
         meta = self._model.Meta
         pattern = f"{meta.global_key_prefix}:{meta.model_key_prefix}:*"
         keys = self._client.keys(pattern)
@@ -100,6 +127,7 @@ class User:
         age: int = 0,
         weight: float = 0.0,
         height: float = 0.0,
+        *,
         ensure_unique_email: bool = True,
         ensure_unique_cpf: bool = True,
     ) -> UserOM:
@@ -107,6 +135,24 @@ class User:
 
         Se ensure_unique_email ou ensure_unique_cpf for True e já existir registro
         com esse email/cpf, levanta ValueError. Use isso para testar “campo único”.
+
+        Args:
+            user_id: Chave primária do usuário.
+            name: Nome do usuário.
+            email: Email do usuário.
+            cpf: CPF do usuário.
+            age: Idade do usuário.
+            weight: Peso do usuário.
+            height: Altura do usuário.
+            ensure_unique_email: Garantir que o email seja único.
+            ensure_unique_cpf: Garantir que o CPF seja único.
+
+        Returns:
+            UserOM: O usuário criado.
+
+        Raises:
+            ValueError: Se o email ou CPF já estiver cadastrado, dependendo das opções de unicidade.
+
         """
         if ensure_unique_email:
             existentes = self._objects.find_by_email(email)
@@ -132,17 +178,28 @@ class User:
     def get(
         self,
         pk: str,
+        *,
         fallback_to_api: bool | None = None,
         ttl_seconds: int | None = None,
     ) -> UserOM | None:
-        """Busca por chave primária. Se fallback_to_api (ou self.fallback_to_api), em miss busca na API e persiste no cache."""
+        """Busca por chave primária.
+
+        Se `fallback_to_api` (ou `self.fallback_to_api`), em miss, busca na API e persiste no cache.
+
+        Args:
+            pk: Chave primária do usuário.
+            fallback_to_api: Flag para fallback para API.
+            ttl_seconds: Tempo de vida do cache.
+
+        Returns:
+            Usuário encontrado ou None.
+
+        """
         existing = self._objects.get(pk)
         if existing is not None:
             return existing
 
-        use_fallback = (
-            fallback_to_api if fallback_to_api is not None else self._fallback_to_api
-        )
+        use_fallback = fallback_to_api if fallback_to_api is not None else self._fallback_to_api
         if not use_fallback:
             return None
 
@@ -166,25 +223,61 @@ class User:
         inst.expire(ttl_seconds or DEFAULT_TTL_SECONDS)
         return inst
 
-    def get_by_email(self, email: str) -> List[UserOM]:
-        """Busca por email."""
+    def get_by_email(self, email: str) -> list[UserOM]:
+        """Busca por email.
+
+        Args:
+            email: Email do usuário.
+
+        Returns:
+            Lista de usuários encontrados.
+
+        """
         return self._objects.find_by_email(email)
 
     def get_by_cpf(self, cpf: str) -> UserOM | None:
-        """Busca por CPF. Retorna o primeiro ou None."""
+        """Busca por CPF. Retorna o primeiro ou None.
+
+        Args:
+            cpf: CPF do usuário.
+
+        Returns:
+            Usuário encontrado ou None.
+
+        """
         return self._objects.find_by_cpf(cpf)
 
-    def search_by_name(self, query: str, limit: int = 100) -> List[UserOM]:
-        """Busca full-text no nome."""
+    def search_by_name(self, query: str, limit: int = 100) -> list[UserOM]:
+        """Busca full-text no nome.
+
+        Args:
+            query: Query de busca.
+            limit: Limite de resultados.
+
+        Returns:
+            Lista de usuários encontrados.
+
+        """
         return self._objects.find_by_name(query, limit=limit)
 
     def list_users(
         self,
         offset: int = 0,
         limit: int = 10,
+        *,
         sort_by_age_asc: bool = True,
-    ) -> List[UserOM]:
-        """Lista com paginação e ordenação por idade."""
+    ) -> list[UserOM]:
+        """Lista com paginação e ordenação por idade.
+
+        Args:
+            offset: Offset.
+            limit: Limite.
+            sort_by_age_asc: Ordenar por idade ascendente.
+
+        Returns:
+            Lista de usuários encontrados.
+
+        """
         return self._objects.list_all(
             offset=offset,
             limit=limit,
@@ -192,11 +285,24 @@ class User:
         )
 
     def count(self) -> int:
-        """Total de usuários no índice."""
+        """Total de usuários no índice.
+
+        Returns:
+            Total de usuários no índice.
+
+        """
         return self._objects.count()
 
     def delete_user(self, pk: str) -> bool:
-        """Remove por chave primária."""
+        """Remove por chave primária.
+
+        Args:
+            pk: Chave primária do usuário.
+
+        Returns:
+            True se o usuário foi removido, False caso contrário.
+
+        """
         return self._objects.delete(pk)
 
     def get_or_create(
@@ -204,7 +310,16 @@ class User:
         user_id: str,
         defaults: dict[str, Any] | None = None,
     ) -> tuple[UserOM, bool]:
-        """Busca por pk; se não existir, cria com defaults. Retorna (instância, criado)."""
+        """Busca por pk; se não existir, cria com defaults. Retorna (instância, criado).
+
+        Args:
+            user_id: Chave primária do usuário.
+            defaults: Defaults para o usuário.
+
+        Returns:
+            Tuple[UserOM, bool]: Tuple com a instância do usuário e se foi criado.
+
+        """
         defaults = defaults or {}
         existing = self._objects.get(user_id)
         if existing is not None:
@@ -225,7 +340,18 @@ class User:
         user_id: str,
         defaults: dict[str, Any] | None = None,
     ) -> tuple[UserOM, bool]:
-        """Busca por pk; se existir, atualiza com defaults; senão, cria. Retorna (instância, criado)."""
+        """Busca por pk.
+
+        Se existir, atualiza com defaults; senão, cria. Retorna (instância, criado).
+
+        Args:
+            user_id: Chave primária do usuário.
+            defaults: Defaults para o usuário.
+
+        Returns:
+            (UserOM, bool): Tuple com a instância do usuário e se foi criado.
+
+        """
         defaults = defaults or {}
         existing = self._objects.get(user_id)
         if existing is not None:

@@ -1,10 +1,11 @@
+# ruff: noqa: S311
 """Gerador de produtos falsos para testes.
 
 Gera nomes de produtos realistas (tipo + modelo/característica), descrição, categoria e preço.
 """
 
 import random
-from typing import Iterator
+from collections.abc import Iterator
 
 from faker import Faker
 
@@ -93,17 +94,24 @@ PRODUTOS_POR_CATEGORIA: dict[str, list[str]] = {
 }
 
 PRICE_MIN, PRICE_MAX = 9.90, 9999.90
+RANDOM_THRESHOLD = 0.3
+RANDOM_NAME_THRESHOLD = 0.5
 
 
 def _nome_produto_aleatorio() -> tuple[str, str]:
-    """Escolhe uma categoria e um nome de produto dessa categoria. Retorna (name, category)."""
+    """Escolhe uma categoria e um nome de produto dessa categoria. Retorna (name, category).
+
+    Returns:
+        Tuple[str, str]: Tuple com o nome do produto e a categoria.
+
+    """
     category = random.choice(CATEGORIAS)
     names = PRODUTOS_POR_CATEGORIA[category]
     base = random.choice(names)
-    if random.random() < 0.3:
+    if random.random() < RANDOM_THRESHOLD:
         sufixo = (
             f" {random.randint(1, 99)}"
-            if random.random() < 0.5
+            if random.random() < RANDOM_NAME_THRESHOLD
             else f" {_faker.first_name()}"
         )
         return (f"{base}{sufixo}".strip(), category)

@@ -6,7 +6,7 @@ testar buscas por campo “único” (ex.: find_by_email, find_by_cpf) sem colis
 """
 
 import random
-from typing import Iterator
+from collections.abc import Iterator
 
 from faker import Faker
 

@@ -1,13 +1,16 @@
 """Exemplo de uso do RedisCache genérico."""
 
 from pydantic import BaseModel
+from rich.console import Console
 
 from redis_testing.cache import RedisCache
 from redis_testing.utils import get_redis_client
 
+console = Console()
+
 
 # Exemplo 1: Cache simples com valores primitivos
-def exemplo_cache_simples():
+def exemplo_cache_simples() -> None:
     """Cache de strings simples."""
     client = get_redis_client()
 
@@ -23,11 +26,11 @@ def exemplo_cache_simples():
 
     # Buscar
     valor = cache.get("chave1")
-    print(f"Valor recuperado: {valor}")
+    console.print(f"Valor recuperado: {valor}")
 
     # Verificar existência
     existe = cache.exists("chave1")
-    print(f"Chave existe: {existe}")
+    console.print(f"Chave existe: {existe}")
 
     # Deletar
     cache.delete("chave1")
@@ -43,7 +46,7 @@ class Produto(BaseModel):
     categoria: str
 
 
-def exemplo_cache_com_modelo():
+def exemplo_cache_com_modelo() -> None:
     """Cache com modelos Pydantic."""
     client = get_redis_client()
 
@@ -67,15 +70,15 @@ def exemplo_cache_com_modelo():
 
     # Buscar com tipo
     produto_recuperado = cache.get("prod-1", Produto)
-    print(f"Produto recuperado: {produto_recuperado}")
+    console.print(f"Produto recuperado: {produto_recuperado}")
 
     # Buscar sem tipo (retorna dict)
     produto_dict = cache.get("prod-1")
-    print(f"Produto como dict: {produto_dict}")
+    console.print(f"Produto como dict: {produto_dict}")
 
 
 # Exemplo 3: Cache com Hash storage e índices RediSearch
-def exemplo_cache_com_indice():
+def exemplo_cache_com_indice() -> None:
     """Cache com Hash storage e busca reversa via RediSearch."""
     client = get_redis_client()
 
@@ -111,7 +114,7 @@ def exemplo_cache_com_indice():
 
     # Busca reversa por categoria
     produto_encontrado = cache.find_one("categoria", "eletrônicos", Produto)
-    print(f"Produto encontrado por categoria: {produto_encontrado}")
+    console.print(f"Produto encontrado por categoria: {produto_encontrado}")
 
     # Bulk save
     produtos_bulk = [
@@ -119,11 +122,11 @@ def exemplo_cache_com_indice():
         ("prod-4", Produto(id="prod-4", nome="Monitor", preco=1299.90, categoria="eletrônicos")),
     ]
     salvos = cache.bulk_save(produtos_bulk)
-    print(f"Produtos salvos em bulk: {salvos}")
+    console.print(f"Produtos salvos em bulk: {salvos}")
 
 
 # Exemplo 4: Cache com dict simples
-def exemplo_cache_com_dict():
+def exemplo_cache_com_dict() -> None:
     """Cache com dicionários Python."""
     client = get_redis_client()
 
@@ -142,18 +145,18 @@ def exemplo_cache_com_dict():
     cache.save("user-1", dados)
 
     dados_recuperados = cache.get("user-1")
-    print(f"Dados recuperados: {dados_recuperados}")
+    console.print(f"Dados recuperados: {dados_recuperados}")
 
 
 if __name__ == "__main__":
-    print("=== Exemplo 1: Cache Simples ===")
+    console.print("=== Exemplo 1: Cache Simples ===")
     exemplo_cache_simples()
 
-    print("\n=== Exemplo 2: Cache com Modelo Pydantic ===")
+    console.print("\n=== Exemplo 2: Cache com Modelo Pydantic ===")
     exemplo_cache_com_modelo()
 
-    print("\n=== Exemplo 3: Cache com Índice RediSearch ===")
+    console.print("\n=== Exemplo 3: Cache com Índice RediSearch ===")
     exemplo_cache_com_indice()
 
-    print("\n=== Exemplo 4: Cache com Dict ===")
+    console.print("\n=== Exemplo 4: Cache com Dict ===")
     exemplo_cache_com_dict()

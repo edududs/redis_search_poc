@@ -2,10 +2,12 @@ from pydantic import BaseModel
 from redis import Redis
 from redis.commands.search.field import TagField, TextField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
+from rich.console import Console
 
 from .utils import get_redis_client
 
 INDEX_NAME = "user-idx"
+console = Console()
 
 
 class User(BaseModel):
@@ -42,13 +44,13 @@ def create_user(client: Redis, user: User) -> User:
     return user
 
 
-def get_user(client: Redis, user_id: str):
+def get_user(client: Redis, user_id: str) -> User:
     user_key = f"user:{user_id}"
     user = client.hgetall(user_key)
     return User(**user)
 
 
-def main():
+def main() -> None:
     client = get_redis_client()
     setup_index(client=client, index_name=INDEX_NAME)
     user = User(
@@ -61,4 +63,4 @@ def main():
         height=1.78,
     )
     create_user(client=client, user=user)
-    print("Get sem o Redis OM:", get_user(client=client, user_id="1"))
+    console.print("Get sem o Redis OM: [green]{get_user(client=client, user_id='1')}[/green]")

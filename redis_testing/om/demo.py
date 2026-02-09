@@ -21,7 +21,7 @@ def demo_user(client: Redis) -> None:
             "1. Criar usuários (UserOM.objects)",
             title="Demo Redis OM",
             border_style="blue",
-        )
+        ),
     )
 
     u1 = user_service.create_user(
@@ -48,7 +48,7 @@ def demo_user(client: Redis) -> None:
 
     console.print()
     console.print(
-        Panel.fit("2. Get por chave primária (UserOM.objects.get)", border_style="blue")
+        Panel.fit("2. Get por chave primária (UserOM.objects.get)", border_style="blue"),
     )
     got = user_service.get_user("demo-1")
     console.print("  UserOM.objects.get('demo-1'):", got)
@@ -56,7 +56,8 @@ def demo_user(client: Redis) -> None:
     console.print()
     console.print(Panel.fit("3. Find: nome, email e CPF", border_style="blue"))
     console.print(
-        "  [cyan]find_by_name('Alice'):[/cyan]", user_service.find_by_name("Alice")
+        "  [cyan]find_by_name('Alice'):[/cyan]",
+        user_service.find_by_name("Alice"),
     )
     console.print(
         "  [cyan]find_by_email('bob@...'):[/cyan]",
@@ -69,7 +70,7 @@ def demo_user(client: Redis) -> None:
 
     console.print()
     console.print(
-        Panel.fit("4. Listar (paginação + ordenar por idade)", border_style="blue")
+        Panel.fit("4. Listar (paginação + ordenar por idade)", border_style="blue"),
     )
     page = user_service.list_users(offset=0, limit=5, sort_by_age_asc=True)
     table = Table(show_header=True, header_style="bold")
@@ -100,7 +101,7 @@ def demo_product(client: Redis) -> None:
             "1. Criar produtos (ProductOM.objects)",
             title="Demo JsonModel / ProductOM",
             border_style="green",
-        )
+        ),
     )
 
     product_service.create_product(
@@ -133,15 +134,16 @@ def demo_product(client: Redis) -> None:
     console.print()
     console.print(
         Panel.fit(
-            "2. Get por chave primária (ProductOM.objects.get)", border_style="green"
-        )
+            "2. Get por chave primária (ProductOM.objects.get)",
+            border_style="green",
+        ),
     )
     got = product_service.get_product("prod-1")
     console.print("  ProductOM.objects.get('prod-1'):", got)
 
     console.print()
     console.print(
-        Panel.fit("3. Find: nome (full-text) e categoria (exato)", border_style="green")
+        Panel.fit("3. Find: nome (full-text) e categoria (exato)", border_style="green"),
     )
     console.print(
         "  [cyan]find_product_by_name('Gamer'):[/cyan]",
@@ -154,7 +156,7 @@ def demo_product(client: Redis) -> None:
 
     console.print()
     console.print(
-        Panel.fit("4. Listar (paginação + ordenar por preço)", border_style="green")
+        Panel.fit("4. Listar (paginação + ordenar por preço)", border_style="green"),
     )
     page = product_service.list_products(offset=0, limit=5, sort_by_price_asc=True)
     table = Table(show_header=True, header_style="bold")
@@ -168,7 +170,8 @@ def demo_product(client: Redis) -> None:
 
     console.print()
     console.print(
-        "  [yellow]Total de produtos no índice:[/yellow]", product_service.count()
+        "  [yellow]Total de produtos no índice:[/yellow]",
+        product_service.count(),
     )
 
     console.print()
