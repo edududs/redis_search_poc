@@ -3,18 +3,28 @@ from typing import Any
 
 from redis import Redis
 
+from redis_testing.name_normalization import normalize_name_for_search
 from redis_testing.om.utils import bootstrap
 from redis_testing.utils import ApiClient, get_redis_client
 
 from .manager import ProductOMObjects
 from .model import ProductOM
+from .smart_search import SmartSearchService
 from .utils import gerar_produtos_fake
 
 logger = getLogger(__name__)
 
 
 class Product:
-    """Serviço para operações em produtos: bootstrap, popular com fakes, CRUD, get com fallback opcional para API."""
+    """Serviço para operações em produtos.
+
+    Features:
+        Bootstrap
+        Popular com fakes
+        CRUD
+        Get com fallback opcional para API
+        Smart search
+    """
 
     def __init__(
         self,
@@ -34,6 +44,11 @@ class Product:
         self._model = ProductOM
         self._objects = ProductOM.objects
         self._fallback_to_api = fallback_to_api
+        self._smart_search = SmartSearchService(
+            client=self._client,
+            objects=self._objects,
+            model=self._model,
+        )
 
     @property
     def fallback_to_api(self) -> bool:
@@ -96,6 +111,7 @@ class Product:
                 self._objects.create(
                     product_id=data["id"],
                     name=data["name"],
+                    name_search=data["name_search"],
                     description=data["description"],
                     category=data["category"],
                     price=data["price"],
@@ -126,6 +142,7 @@ class Product:
         return self._objects.create(
             product_id=product_id,
             name=name,
+            name_search=normalize_name_for_search(name),
             description=description,
             category=category,
             price=price,
@@ -168,6 +185,7 @@ class Product:
         inst = self._objects.create(
             product_id=data.get("id", pk),
             name=data.get("name", ""),
+            name_search=normalize_name_for_search(data.get("name", "")),
             description=data.get("description", ""),
             category=data.get("category", ""),
             price=float(data.get("price", 0.0)),
@@ -199,7 +217,11 @@ class Product:
             Lista de produtos encontrados.
 
         """
-        return self._objects.find_by_name(query, limit=limit)
+        return self._objects.find_by_name_search(query, limit=limit)
+
+    def smart_search(self, query: str, limit: int = 100) -> tuple[list[ProductOM], dict[str, str]]:
+        """Run layered search: direct, dictionary, fuzzy and spellcheck."""
+        return self._smart_search.search(query=query, limit=limit)
 
     def list_products(
         self,
@@ -268,6 +290,7 @@ class Product:
         created = self._objects.create(
             product_id=product_id,
             name=defaults.get("name", ""),
+            name_search=normalize_name_for_search(defaults.get("name", "")),
             description=defaults.get("description", ""),
             category=defaults.get("category", ""),
             price=defaults.get("price", 0.0),
@@ -305,6 +328,7 @@ class Product:
         created = self._objects.create(
             product_id=product_id,
             name=defaults.get("name", ""),
+            name_search=normalize_name_for_search(defaults.get("name", "")),
             description=defaults.get("description", ""),
             category=defaults.get("category", ""),
             price=defaults.get("price", 0.0),

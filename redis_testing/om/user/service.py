@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 from redis import Redis
 
-from redis_testing.om import bootstrap
+from redis_testing.om.utils import bootstrap
 from redis_testing.utils import ApiClient, get_redis_client
 
 from .model import UserOM

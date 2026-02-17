@@ -9,11 +9,13 @@ from redis_om.model.migrations import SchemaDetector
 def bootstrap(client: Redis) -> None:
     """Seta UserOM.Meta.database e ProductOM.Meta.database e cria/atualiza os índices."""
     from .product import ProductOM
+    from .product.index import ensure_product_index_with_phonetic
     from .user import UserOM
 
     UserOM.Meta.database = client
     ProductOM.Meta.database = client
     SchemaDetector(conn=client).run()
+    ensure_product_index_with_phonetic(client)
 
 
 class ManagerDescriptor[T]:

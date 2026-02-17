@@ -17,6 +17,7 @@ class ProductOM(JsonModel, index=True):
 
     id: str = Field(primary_key=True)
     name: str = Field(full_text_search=True)
+    name_search: str = Field(full_text_search=True)
     description: str = Field(full_text_search=True)
     category: str = Field(index=True)
     price: float = Field(sortable=True, default=0.0)

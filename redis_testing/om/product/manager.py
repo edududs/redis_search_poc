@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from redis_testing.name_normalization import normalize_name_for_search
+
 if TYPE_CHECKING:
     from .model import ProductOM
 
@@ -17,6 +19,7 @@ class ProductOMObjects:
         name: str,
         description: str,
         category: str,
+        name_search: str | None = None,
         price: float = 0.0,
     ) -> "ProductOM":
         """Cria e salva um ProductOM.
@@ -26,15 +29,18 @@ class ProductOMObjects:
             name: Nome do produto.
             description: Descrição do produto.
             category: Categoria do produto.
+            name_search: Campo normalizado para busca.
             price: Preço do produto.
 
         Returns:
             ProductOM: O produto criado.
 
         """
+        normalized_name_search = name_search or normalize_name_for_search(name)
         inst = self.model(
             id=product_id,
             name=name,
+            name_search=normalized_name_search,
             description=description,
             category=category,
             price=price,
@@ -69,6 +75,12 @@ class ProductOMObjects:
 
         """
         return list(self.model.find(self.model.name % query).copy(limit=limit).all())
+
+    def find_by_name_search(self, query: str, limit: int = 100) -> list["ProductOM"]:
+        """Busca por campo name_search normalizado."""
+        return list(
+            self.model.find(self.model.name_search % query).copy(limit=limit).all(),
+        )
 
     def find_by_category(self, category: str) -> list["ProductOM"]:
         """Busca por categoria.

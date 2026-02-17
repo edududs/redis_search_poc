@@ -9,6 +9,8 @@ from collections.abc import Iterator
 
 from faker import Faker
 
+from redis_testing.name_normalization import normalize_name_for_search
+
 _faker = Faker("pt_BR")
 
 CATEGORIAS = [
@@ -147,6 +149,7 @@ def gerar_produtos_fake(
         yield {
             "id": product_id,
             "name": name,
+            "name_search": normalize_name_for_search(name),
             "description": description,
             "category": category,
             "price": price,

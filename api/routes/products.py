@@ -6,12 +6,32 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.auth import get_api_key
 from api.deps import get_product_repository
-from api.schemas import ProductCreate, ProductResponse
+from api.schemas import (
+    ProductCreate,
+    ProductResponse,
+    ProductSearchMeta,
+    ProductSearchResponse,
+)
+from redis_testing.om.product import product_service
 
 if TYPE_CHECKING:
     from api.crud import ProductRepository
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.get("/search")
+def search_products(
+    q: str,
+    _: Annotated[str, Depends(get_api_key)],
+    limit: int = 100,
+) -> ProductSearchResponse:
+    """Search products using the smart search pipeline from Redis."""
+    products, metadata = product_service.smart_search(q, limit=limit)
+    return ProductSearchResponse(
+        meta=ProductSearchMeta(**metadata),
+        products=[ProductResponse.model_validate(product) for product in products],
+    )
 
 
 @router.get("/{product_id}")
@@ -22,7 +42,10 @@ def get_product(
 ) -> ProductResponse:
     """Retorna produto por id.
 
-    Usado como fallback quando Product.get(pk, fallback_to_api=True) não encontra no cache.
+    Usado como fallback quando Product.get(
+        pk,
+        fallback_to_api=True,
+    ) não encontra no cache.
     """
     product = repo.get(product_id)
     if product is None:

@@ -22,7 +22,8 @@ class UserBase(BaseModel):
     age: PositiveInt = Field(default=0, description="Idade do usuário")
     weight: PositiveFloat = Field(default=0.0, description="Peso do usuário em kg")
     height: StrictPositiveFloat = Field(
-        default=0.1, description="Altura do usuário em metros"
+        default=0.1,
+        description="Altura do usuário em metros",
     )
 
 
@@ -69,3 +70,18 @@ class ProductResponse(ProductBase):
 
     id: StrRequired
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProductSearchMeta(BaseModel):
+    """Metadata returned by smart product search."""
+
+    based_in: str = Field(description="Original user query")
+    find_by: str = Field(description="Query used to fetch the results")
+    strategy: str = Field(description="Resolution strategy used by search")
+
+
+class ProductSearchResponse(BaseModel):
+    """Response payload for smart product search endpoint."""
+
+    meta: ProductSearchMeta
+    products: list[ProductResponse]
